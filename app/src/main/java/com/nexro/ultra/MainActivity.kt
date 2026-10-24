@@ -3,6 +3,7 @@ package com.nexro.ultra
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
 import androidx.activity.ComponentActivity
@@ -50,11 +51,18 @@ private fun NexroDashboard(activity: MainActivity) {
     var trigger by remember { mutableStateOf(prefs.getString("trigger", "volume_down") ?: "volume_down") }
     var previewHidden by remember { mutableStateOf(false) }
     val refresh = activity.resumeCount
+    val observedRecords by NotificationEventRepository.get(activity).records.collectAsState()
     val accessibilityEnabled = remember(refresh) {
         val expected = ComponentName(activity, NexroPrivacyAccessibilityService::class.java)
         Settings.Secure.getString(activity.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
             .orEmpty().split(':').any { ComponentName.unflattenFromString(it) == expected }
     }
+    val notificationAccessEnabled = remember(refresh) {
+        val expected = ComponentName(activity, NexroNotificationListener::class.java)
+        Settings.Secure.getString(activity.contentResolver, "enabled_notification_listeners")
+            .orEmpty().split(':').any { ComponentName.unflattenFromString(it) == expected }
+    }
+    val overlayCapability = remember(refresh) { OverlayCapabilityChecker.inspect(activity) }
 
     LaunchedEffect(refresh) {
         enabled = prefs.getBoolean("enabled", false)
@@ -83,7 +91,7 @@ private fun NexroDashboard(activity: MainActivity) {
                         Text("ULTRA", color = Color.White, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black)
                         Text("Instant notification privacy", color = Muted, style = MaterialTheme.typography.bodySmall)
                     }
-                    Text("v0.4.0", color = Muted, style = MaterialTheme.typography.labelSmall)
+                    Text("v0.5.0", color = Muted, style = MaterialTheme.typography.labelSmall)
                 }
 
                 Surface(Modifier.fillMaxWidth().animateContentSize(), shape = RoundedCornerShape(26.dp), color = Panel) {
@@ -168,17 +176,44 @@ private fun NexroDashboard(activity: MainActivity) {
                 Surface(shape = RoundedCornerShape(22.dp), color = Panel, modifier = Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Text(if (accessibilityEnabled) "Nexro accessibility is ON" else "Enable Nexro accessibility", fontWeight = FontWeight.SemiBold)
-                        Text("Android requires this permission to detect the chosen volume-key gesture and draw a privacy bar above the notification shade.", color = Muted, style = MaterialTheme.typography.bodySmall)
+                        Text("Notification access lets Nexro observe posted, updated and removed notifications. Accessibility is only for supported trigger experiments; volume-key delivery varies by device.", color = Muted, style = MaterialTheme.typography.bodySmall)
+                        Button(onClick = { activity.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp)) {
+                            Text(if (notificationAccessEnabled) "Notification access settings" else "Grant notification access")
+                        }
                         Button(onClick = { activity.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp)) {
-                            Text(if (accessibilityEnabled) "Open accessibility settings" else "Enable accessibility service")
+                            Text(if (accessibilityEnabled) "Accessibility settings" else "Enable accessibility trigger (optional)")
+                        }
+                        Button(onClick = { activity.startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + activity.packageName))) }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp)) {
+                            Text(if (overlayCapability.drawOverlaysGranted) "Overlay permission settings" else "Grant overlay permission")
+                        }
+                        Text(overlayCapability.explanation, color = Muted, style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+
+                SectionHeading("04", "LIVE NOTIFICATION OBSERVER")
+                Surface(shape = RoundedCornerShape(22.dp), color = Panel, modifier = Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text("${observedRecords.values.count { !it.removed }} active records observed", color = Color.White, fontWeight = FontWeight.Bold)
+                        Text("A notification record is not proof that its heads-up popup is visible. Exact SystemUI bounds are unavailable to this ordinary app.", color = Muted, style = MaterialTheme.typography.bodySmall)
+                        if (observedRecords.isEmpty()) {
+                            Text("No notification events observed in this process yet. Grant notification access, then wait for a new notification.", color = Muted, style = MaterialTheme.typography.bodySmall)
+                        } else {
+                            observedRecords.values.filter { !it.removed }.takeLast(5).reversed().forEach { item ->
+                                HorizontalDivider(color = Line)
+                                Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                                    Text(item.title?.takeIf { it.isNotBlank() } ?: item.packageName, fontWeight = FontWeight.SemiBold)
+                                    Text(item.text.orEmpty().take(140), color = Muted, style = MaterialTheme.typography.bodySmall)
+                                    Text("Visibility: UNKNOWN • Mask: UNSUPPORTED without SystemUI bounds", color = Muted, style = MaterialTheme.typography.labelSmall)
+                                }
+                            }
                         }
                     }
                 }
 
                 Surface(shape = RoundedCornerShape(18.dp), color = Raised, modifier = Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text("IMPORTANT", color = Mint, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
-                        Text("Nexro does not cancel or replace other apps' notifications. On Android, the privacy bar is a separate overlay and its exact position/visibility can vary by device and system version. Test on your phone before relying on it.", color = Muted, style = MaterialTheme.typography.bodySmall)
+                        Text("HONEST CAPABILITY STATUS", color = Mint, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                        Text("Nexro tracks real notification lifecycle events and never cancels or replaces source notifications. Android's public app APIs do not expose genuine heads-up rendered bounds or guarantee that an app overlay is above SystemUI. The preview is simulated; exact heads-up masking is currently unsupported/unverified on this tier.", color = Muted, style = MaterialTheme.typography.bodySmall)
                     }
                 }
                 Text("NEXRO ULTRA  •  PRIVATE BY DESIGN", color = Muted, style = MaterialTheme.typography.labelSmall)
