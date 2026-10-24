@@ -60,4 +60,12 @@ class NexroQuickSettingsTile : TileService() {
         }
     }
 
+
+    companion object {
+        fun refresh(context: Context) {
+            runCatching {
+                requestListeningState(context, ComponentName(context, NexroQuickSettingsTile::class.java))
+            }
+        }
+    }
 }
