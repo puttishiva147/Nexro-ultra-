@@ -1,4 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="nexro_accessibility_description">Detects the selected double-volume-key gesture and displays a temporary privacy bar over the notification shade. Notification content is not uploaded.</string>
+    <string name="nexro_accessibility_description">Optional experimental volume-key gesture detector. It does not alter or mask the original notification.</string>
 </resources>
