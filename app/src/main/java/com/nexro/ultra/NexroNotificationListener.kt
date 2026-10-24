@@ -1,23 +1,27 @@
 package com.nexro.ultra
 
+import android.Manifest
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
+import android.content.pm.PackageManager
 import android.os.Build
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
+import androidx.core.content.ContextCompat
 
 /**
- * Local-only fallback implementation. Android does not expose an API to rewrite another
- * app's notification layout. This service replaces supported message notifications with
- * a safe notice; the original app's actions may be lost.
+ * Local-only fallback: Android does not expose an API to rewrite another app's notification layout.
+ * This service replaces supported message notifications with a safe notice; source-app actions may be lost.
  */
 class NexroNotificationListener : NotificationListenerService() {
     override fun onNotificationPosted(sbn: StatusBarNotification) {
         if (sbn.packageName == packageName) return
         val prefs = getSharedPreferences("nexro_ultra_prefs", Context.MODE_PRIVATE)
         if (!prefs.getBoolean("enabled", false)) return
+        if (Build.VERSION.SDK_INT >= 33 &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) return
         if ((sbn.notification.flags and (Notification.FLAG_GROUP_SUMMARY or Notification.FLAG_ONGOING_EVENT)) != 0) return
 
         val selected = when (sbn.packageName) {
@@ -36,14 +40,12 @@ class NexroNotificationListener : NotificationListenerService() {
         val hasMessageText = !text.isNullOrBlank() || !bigText.isNullOrBlank() ||
             (lines?.any { !it.isNullOrBlank() } == true)
         if (!hasMessageText) return
-        // Skip silent notifications and already-cancelled entries; leave unsupported layouts alone.
-        if (sbn.notification.flags and Notification.FLAG_ONLY_ALERT_ONCE != 0 && text.isNullOrBlank()) return
 
         try {
             cancelNotification(sbn.key)
             postSafeReplacement(sbn.packageName, title?.toString().orEmpty(), sbn.id)
         } catch (_: SecurityException) {
-            // Permission may have been revoked while the service was running.
+            // Permission may have been revoked during processing.
         } catch (_: Exception) {
             // Never log or persist private notification content.
         }
@@ -61,13 +63,14 @@ class NexroNotificationListener : NotificationListenerService() {
             val appInfo = packageManager.getApplicationInfo(sourcePackage, 0)
             packageManager.getApplicationLabel(appInfo).toString()
         } catch (_: Exception) { "An app" }
-        // Preserve the sender/title only; never copy the message body into the replacement.
         val safeTitle = if (originalTitle.isBlank()) appName else "$appName • $originalTitle"
-        val notice = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             Notification.Builder(this, channelId)
         } else {
-            @Suppress("DEPRECATION") Notification.Builder(this)
-        }.setSmallIcon(android.R.drawable.ic_lock_lock)
+            @Suppress("DEPRECATION")
+            Notification.Builder(this)
+        }
+        val notice = builder.setSmallIcon(android.R.drawable.ic_lock_lock)
             .setContentTitle(safeTitle)
             .setContentText("New notification hidden by Nexro Ultra")
             .setCategory(Notification.CATEGORY_MESSAGE)
