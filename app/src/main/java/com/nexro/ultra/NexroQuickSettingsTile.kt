@@ -6,6 +6,9 @@ import android.content.Intent
 import android.provider.Settings
 import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class NexroQuickSettingsTile : TileService() {
     override fun onStartListening() {
@@ -27,6 +30,9 @@ class NexroQuickSettingsTile : TileService() {
             return
         }
         prefs.edit().putBoolean("enabled", !enabled).apply()
+        CoroutineScope(Dispatchers.IO).launch {
+            PrivacySettingsStore(this@NexroQuickSettingsTile).setEnabled(!enabled)
+        }
         syncTile()
     }
 
