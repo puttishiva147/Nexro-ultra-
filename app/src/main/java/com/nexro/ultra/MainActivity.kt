@@ -1,15 +1,12 @@
 package com.nexro.ultra
 
 import android.Manifest
-import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.graphics.drawable.Icon
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
-import android.service.quicksettings.TileService
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -54,17 +51,12 @@ class MainActivity : ComponentActivity() {
     }
 
     fun requestQuickSettingsTile() {
-        if (Build.VERSION.SDK_INT >= 33) {
-            TileService.requestAddTileService(
-                this,
-                ComponentName(this, NexroQuickSettingsTile::class.java),
-                "Nexro Ultra",
-                Icon.createWithResource(this, android.R.drawable.ic_lock_lock),
-                mainExecutor
-            ) { }
-        } else {
-            startActivity(Intent(Settings.ACTION_SETTINGS))
-        }
+        android.widget.Toast.makeText(
+            this,
+            "Open Quick Settings, tap Edit, then add the Nexro Ultra tile.",
+            android.widget.Toast.LENGTH_LONG
+        ).show()
+        startActivity(Intent(Settings.ACTION_SETTINGS))
     }
 }
 
