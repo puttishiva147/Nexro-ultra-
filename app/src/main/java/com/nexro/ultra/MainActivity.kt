@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 
 private val Ink = Color(0xFF080A09)
 private val Panel = Color(0xFF141815)
@@ -47,6 +48,9 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun NexroDashboard(activity: MainActivity) {
     val prefs = remember { activity.getSharedPreferences("nexro_ultra_prefs", Context.MODE_PRIVATE) }
+    val settingsStore = remember { PrivacySettingsStore(activity) }
+    val settings by settingsStore.settings.collectAsState(initial = PrivacySettings())
+    val coroutineScope = rememberCoroutineScope()
     var enabled by remember { mutableStateOf(prefs.getBoolean("enabled", false)) }
     var trigger by remember { mutableStateOf(prefs.getString("trigger", "quick_settings") ?: "quick_settings") }
     var previewHidden by remember { mutableStateOf(false) }
@@ -64,9 +68,9 @@ private fun NexroDashboard(activity: MainActivity) {
     }
     val overlayCapability = remember(refresh) { OverlayCapabilityChecker.inspect(activity) }
 
-    LaunchedEffect(refresh) {
-        enabled = prefs.getBoolean("enabled", false)
-        trigger = prefs.getString("trigger", "quick_settings") ?: "quick_settings"
+    LaunchedEffect(settings) {
+        enabled = settings.triggerEnabled
+        trigger = settings.trigger
     }
 
     MaterialTheme(colorScheme = darkColorScheme(
@@ -117,6 +121,7 @@ private fun NexroDashboard(activity: MainActivity) {
                             Switch(checked = enabled, onCheckedChange = {
                                 enabled = it
                                 prefs.edit().putBoolean("enabled", it).apply()
+                                coroutineScope.launch { settingsStore.setEnabled(it) }
                                 NexroQuickSettingsTile.refresh(activity)
                             })
                         }
@@ -130,16 +135,19 @@ private fun NexroDashboard(activity: MainActivity) {
                         TriggerOption("Quick Settings tile", "Tap the Nexro tile in Android Quick Settings", trigger == "quick_settings") {
                             trigger = "quick_settings"
                             prefs.edit().putString("trigger", trigger).apply()
+                            coroutineScope.launch { settingsStore.setTrigger(trigger) }
                         }
                         HorizontalDivider(color = Line)
                         TriggerOption("Volume Down × 2 (experimental)", "Android may not deliver global volume keys to accessibility services", trigger == "volume_down") {
                             trigger = "volume_down"
                             prefs.edit().putString("trigger", trigger).apply()
+                            coroutineScope.launch { settingsStore.setTrigger(trigger) }
                         }
                         HorizontalDivider(color = Line)
                         TriggerOption("Volume Up × 2 (experimental)", "Device-dependent; not a guaranteed system shortcut", trigger == "volume_up") {
                             trigger = "volume_up"
                             prefs.edit().putString("trigger", trigger).apply()
+                            coroutineScope.launch { settingsStore.setTrigger(trigger) }
                         }
                     }
                 }
