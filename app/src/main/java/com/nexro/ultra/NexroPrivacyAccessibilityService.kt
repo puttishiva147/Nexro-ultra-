@@ -53,9 +53,9 @@ class NexroPrivacyAccessibilityService : AccessibilityService() {
         lastKeyTime = now
         if (!doublePress) return false
 
-        // Only trigger while Android System UI (such as the notification shade) is active.
-        if (rootInActiveWindow?.packageName?.toString() != "com.android.systemui") return false
-
+        // Do not require SystemUI to be the active accessibility window: on many phones
+        // the notification shade still reports the underlying app as the active window.
+        // This check previously blocked the gesture even when the service was enabled.
         showBar()
         return true
     }
