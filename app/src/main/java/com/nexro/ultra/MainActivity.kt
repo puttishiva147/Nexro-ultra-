@@ -89,6 +89,7 @@ private fun NexroApp(activity: MainActivity) {
     val selectedAny = whatsapp || whatsappBusiness || telegram || instagram
     val ready = listenerEnabled && postPermission && selectedAny
     val status = when {
+        !enabled && !ready -> "Set up permissions before enabling"
         !enabled -> "Protection is off"
         !listenerEnabled -> "Action needed: enable notification access"
         !postPermission -> "Action needed: allow Nexro Ultra notifications"
@@ -103,11 +104,8 @@ private fun NexroApp(activity: MainActivity) {
 
     MaterialTheme(
         colorScheme = darkColorScheme(
-            primary = NexroAccent,
-            onPrimary = NexroDark,
-            background = NexroDark,
-            surface = NexroCard,
-            onSurface = androidx.compose.ui.graphics.Color(0xFFF4F6F4),
+            primary = NexroAccent, onPrimary = NexroDark, background = NexroDark,
+            surface = NexroCard, onSurface = androidx.compose.ui.graphics.Color(0xFFF4F6F4),
             secondary = androidx.compose.ui.graphics.Color(0xFFA5ADA7)
         )
     ) {
@@ -119,31 +117,34 @@ private fun NexroApp(activity: MainActivity) {
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
-                        Text("NEXRO", style = MaterialTheme.typography.labelLarge,
-                            color = NexroAccent, fontWeight = FontWeight.Bold)
-                        Text("ULTRA", style = MaterialTheme.typography.headlineLarge,
-                            fontWeight = FontWeight.ExtraBold)
+                        Text("NEXRO", style = MaterialTheme.typography.labelLarge, color = NexroAccent,
+                            fontWeight = FontWeight.Bold)
+                        Text("ULTRA", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.ExtraBold)
                         Text("Private by design.", color = MaterialTheme.colorScheme.secondary)
                     }
                     Surface(shape = RoundedCornerShape(18.dp), color = NexroCard) {
-                        Text("NU", modifier = Modifier.padding(18.dp),
-                            style = MaterialTheme.typography.titleLarge, color = NexroAccent,
-                            fontWeight = FontWeight.Bold)
+                        Text("NU", modifier = Modifier.padding(18.dp), style = MaterialTheme.typography.titleLarge,
+                            color = NexroAccent, fontWeight = FontWeight.Bold)
                     }
                 }
 
-                Surface(shape = RoundedCornerShape(24.dp), color = NexroCard,
-                    modifier = Modifier.fillMaxWidth()) {
+                Surface(shape = RoundedCornerShape(24.dp), color = NexroCard, modifier = Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Column(Modifier.weight(1f)) {
                                 Text("Notification privacy", style = MaterialTheme.typography.titleLarge)
                                 Text(status, color = if (enabled && ready) NexroAccent else MaterialTheme.colorScheme.secondary)
                             }
-                            Switch(checked = enabled, onCheckedChange = {
-                                enabled = it
-                                save("enabled", it)
-                            })
+                            Switch(
+                                checked = enabled,
+                                enabled = enabled || ready,
+                                onCheckedChange = {
+                                    if (!it || ready) {
+                                        enabled = it
+                                        save("enabled", it)
+                                    }
+                                }
+                            )
                         }
                         HorizontalDivider(color = androidx.compose.ui.graphics.Color(0xFF303632))
                         Text("Selected message notifications are replaced by a safe Nexro notice. Android does not allow a reliable text-only mask on every app layout.")
@@ -153,12 +154,10 @@ private fun NexroApp(activity: MainActivity) {
                 SectionTitle("SETUP")
                 Surface(shape = RoundedCornerShape(20.dp), color = NexroCard, modifier = Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                        PermissionRow("Notification access", listenerEnabled,
-                            "Detects selected app notifications") {
+                        PermissionRow("Notification access", listenerEnabled, "Detects selected app notifications") {
                             activity.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
                         }
-                        PermissionRow("Nexro notifications", postPermission,
-                            "Needed to show safe replacement notices") {
+                        PermissionRow("Nexro notifications", postPermission, "Needed to show safe replacement notices") {
                             activity.requestPostNotificationPermission()
                         }
                         OutlinedButton(onClick = { refresh++ }, modifier = Modifier.fillMaxWidth()) {
@@ -188,7 +187,7 @@ private fun NexroApp(activity: MainActivity) {
                         Button(onClick = { activity.requestQuickSettingsTile() }, modifier = Modifier.fillMaxWidth()) {
                             Text("Add Quick Settings tile")
                         }
-                        Text("Double-tap and volume-button triggers are not advertised as working because Android has no reliable universal API for them.", color = MaterialTheme.colorScheme.secondary, style = MaterialTheme.typography.bodySmall)
+                        Text("Double-tap and volume-button triggers are not implemented because Android has no reliable universal API for them.", color = MaterialTheme.colorScheme.secondary, style = MaterialTheme.typography.bodySmall)
                     }
                 }
 
@@ -196,8 +195,7 @@ private fun NexroApp(activity: MainActivity) {
                 Text("• Notification processing stays on-device; message text is not uploaded or logged.\n• The original notification may be dismissed, removing reply buttons and other actions.\n• Notifications that cannot be confidently identified are left untouched.\n• OEM behaviour and notification styles vary; test on your device before relying on this for sensitive messages.",
                     color = MaterialTheme.colorScheme.secondary, style = MaterialTheme.typography.bodyMedium)
                 Spacer(Modifier.height(12.dp))
-                Text("NEXRO ULTRA  •  0.2.0", color = MaterialTheme.colorScheme.secondary,
-                    style = MaterialTheme.typography.labelSmall)
+                Text("NEXRO ULTRA  •  0.2.0", color = MaterialTheme.colorScheme.secondary, style = MaterialTheme.typography.labelSmall)
             }
         }
     }
@@ -205,8 +203,7 @@ private fun NexroApp(activity: MainActivity) {
 
 @Composable
 private fun SectionTitle(text: String) {
-    Text(text, style = MaterialTheme.typography.labelMedium, color = NexroAccent,
-        fontWeight = FontWeight.Bold)
+    Text(text, style = MaterialTheme.typography.labelMedium, color = NexroAccent, fontWeight = FontWeight.Bold)
 }
 
 @Composable
@@ -217,8 +214,7 @@ private fun PermissionRow(title: String, granted: Boolean, explanation: String, 
                 Text(title, fontWeight = FontWeight.SemiBold)
                 Text(explanation, color = MaterialTheme.colorScheme.secondary, style = MaterialTheme.typography.bodySmall)
             }
-            Text(if (granted) "READY" else "SET UP",
-                color = if (granted) NexroAccent else MaterialTheme.colorScheme.secondary,
+            Text(if (granted) "READY" else "SET UP", color = if (granted) NexroAccent else MaterialTheme.colorScheme.secondary,
                 style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
         }
         if (!granted) TextButton(onClick = onClick) { Text("Open settings") }
