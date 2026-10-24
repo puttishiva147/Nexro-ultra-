@@ -161,6 +161,7 @@ private fun NexroApp(activity: MainActivity) {
                 }
 
                 SectionTitle("PROTECTED APPS")
+                Text("Protection applies to text-bearing notifications from each selected app, not individual contacts. Original reply actions may be lost when a notification is replaced.", color = MaterialTheme.colorScheme.secondary, style = MaterialTheme.typography.bodySmall)
                 Surface(shape = RoundedCornerShape(20.dp), color = NexroCard, modifier = Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(horizontal = 16.dp)) {
                         AppToggle("WhatsApp", "com.whatsapp", whatsapp) { whatsapp = it; save("pkg_whatsapp", it) }
