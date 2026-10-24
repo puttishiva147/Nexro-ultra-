@@ -1,15 +1,11 @@
 package com.nexro.ultra
 
-import android.Manifest
 import android.content.ComponentName
-import android.content.Intent
 import android.content.Context
-import android.content.pm.PackageManager
-import android.os.Build
+import android.content.Intent
 import android.provider.Settings
 import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
-import androidx.core.content.ContextCompat
 
 class NexroQuickSettingsTile : TileService() {
     override fun onStartListening() {
@@ -21,10 +17,10 @@ class NexroQuickSettingsTile : TileService() {
         super.onClick()
         val prefs = getSharedPreferences("nexro_ultra_prefs", Context.MODE_PRIVATE)
         val enabled = prefs.getBoolean("enabled", false)
-        if (!enabled && !isReadyToEnable()) {
+        if (!enabled && !isAccessibilityEnabled()) {
             qsTile?.let {
                 it.state = Tile.STATE_INACTIVE
-                it.label = "Nexro Ultra • setup needed"
+                it.label = "Nexro • setup needed"
                 it.updateTile()
             }
             startActivityAndCollapse(Intent(this, MainActivity::class.java))
@@ -34,18 +30,10 @@ class NexroQuickSettingsTile : TileService() {
         syncTile()
     }
 
-    private fun isReadyToEnable(): Boolean {
-        val expected = ComponentName(this, NexroNotificationListener::class.java)
-        val listeners = Settings.Secure.getString(contentResolver, "enabled_notification_listeners").orEmpty()
-        val hasAccess = listeners.split(':').any { ComponentName.unflattenFromString(it) == expected }
-        val hasPostPermission = Build.VERSION.SDK_INT < 33 ||
-            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
-        val prefs = getSharedPreferences("nexro_ultra_prefs", Context.MODE_PRIVATE)
-        val hasSelectedApp = prefs.getBoolean("pkg_whatsapp", true) ||
-            prefs.getBoolean("pkg_whatsapp_business", false) ||
-            prefs.getBoolean("pkg_telegram", false) ||
-            prefs.getBoolean("pkg_instagram", false)
-        return hasAccess && hasPostPermission && hasSelectedApp
+    private fun isAccessibilityEnabled(): Boolean {
+        val expected = ComponentName(this, NexroPrivacyAccessibilityService::class.java)
+        return Settings.Secure.getString(contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
+            .orEmpty().split(':').any { ComponentName.unflattenFromString(it) == expected }
     }
 
     private fun syncTile() {
@@ -54,12 +42,11 @@ class NexroQuickSettingsTile : TileService() {
         qsTile?.let { tile ->
             tile.state = if (enabled) Tile.STATE_ACTIVE else Tile.STATE_INACTIVE
             tile.label = "Nexro Ultra"
-            if (Build.VERSION.SDK_INT >= 29) tile.subtitle = if (enabled) "Protection on" else "Protection off"
+            if (android.os.Build.VERSION.SDK_INT >= 29) tile.subtitle = if (enabled) "Trigger on" else "Trigger off"
             tile.contentDescription = if (enabled) "Turn Nexro Ultra off" else "Turn Nexro Ultra on"
             tile.updateTile()
         }
     }
-
 
     companion object {
         fun refresh(context: Context) {
