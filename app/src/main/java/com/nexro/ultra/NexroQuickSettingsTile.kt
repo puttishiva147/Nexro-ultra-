@@ -2,6 +2,7 @@ package com.nexro.ultra
 
 import android.Manifest
 import android.content.ComponentName
+import android.content.Intent
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
@@ -26,6 +27,7 @@ class NexroQuickSettingsTile : TileService() {
                 it.label = "Nexro Ultra • setup needed"
                 it.updateTile()
             }
+            startActivityAndCollapse(Intent(this, MainActivity::class.java))
             return
         }
         prefs.edit().putBoolean("enabled", !enabled).apply()
@@ -58,7 +60,4 @@ class NexroQuickSettingsTile : TileService() {
         }
     }
 
-    companion object {
-        fun refresh(context: Context) { }
-    }
 }
