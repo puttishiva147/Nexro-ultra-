@@ -28,6 +28,14 @@ private val NexroCard = androidx.compose.ui.graphics.Color(0xFF171A18)
 private val NexroAccent = androidx.compose.ui.graphics.Color(0xFF9AD9B5)
 
 class MainActivity : ComponentActivity() {
+    var resumeCount by mutableIntStateOf(0)
+        private set
+
+    override fun onResume() {
+        super.onResume()
+        resumeCount++
+    }
+
     private val notificationPermission = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { }
@@ -51,14 +59,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    fun requestQuickSettingsTile() {
-        android.widget.Toast.makeText(
-            this,
-            "Open Quick Settings, tap Edit, then add the Nexro Ultra tile.",
-            android.widget.Toast.LENGTH_LONG
-        ).show()
-        startActivity(Intent(Settings.ACTION_SETTINGS))
-    }
 }
 
 @Composable
@@ -70,8 +70,10 @@ private fun NexroApp(activity: MainActivity) {
     var telegram by remember { mutableStateOf(prefs.getBoolean("pkg_telegram", false)) }
     var instagram by remember { mutableStateOf(prefs.getBoolean("pkg_instagram", false)) }
     var refresh by remember { mutableIntStateOf(0) }
+    var showTileInstructions by remember { mutableStateOf(false) }
+    val resumeCount = activity.resumeCount
 
-    val listenerEnabled = remember(refresh) {
+    val listenerEnabled = remember(refresh, resumeCount) {
         val expected = ComponentName(activity, NexroNotificationListener::class.java)
         Settings.Secure.getString(activity.contentResolver, "enabled_notification_listeners")
             .orEmpty().split(':').any { ComponentName.unflattenFromString(it) == expected }
@@ -92,7 +94,6 @@ private fun NexroApp(activity: MainActivity) {
 
     fun save(key: String, value: Boolean) {
         prefs.edit().putBoolean(key, value).apply()
-        NexroQuickSettingsTile.refresh(activity)
     }
 
     MaterialTheme(
@@ -177,8 +178,8 @@ private fun NexroApp(activity: MainActivity) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Text("Quick Settings tile", style = MaterialTheme.typography.titleMedium)
                         Text("Add a Nexro Ultra tile to Android Quick Settings to switch protection on or off without opening the app.")
-                        Button(onClick = { activity.requestQuickSettingsTile() }, modifier = Modifier.fillMaxWidth()) {
-                            Text("Add Quick Settings tile")
+                        OutlinedButton(onClick = { showTileInstructions = true }, modifier = Modifier.fillMaxWidth()) {
+                            Text("Show setup steps")
                         }
                         Text("Double-tap and volume-button triggers are not implemented because Android has no reliable universal API for them.", color = MaterialTheme.colorScheme.secondary, style = MaterialTheme.typography.bodySmall)
                     }
@@ -189,6 +190,15 @@ private fun NexroApp(activity: MainActivity) {
                     color = MaterialTheme.colorScheme.secondary, style = MaterialTheme.typography.bodyMedium)
                 Spacer(Modifier.height(12.dp))
                 Text("NEXRO ULTRA  •  0.2.0", color = MaterialTheme.colorScheme.secondary, style = MaterialTheme.typography.labelSmall)
+
+                if (showTileInstructions) {
+                    AlertDialog(
+                        onDismissRequest = { showTileInstructions = false },
+                        title = { Text("Add the Quick Settings tile") },
+                        text = { Text("1. Swipe down from the top twice.\n2. Tap Edit (pencil) on Quick Settings.\n3. Find Nexro Ultra in available tiles.\n4. Drag it into your active tiles and save.") },
+                        confirmButton = { TextButton(onClick = { showTileInstructions = false }) { Text("Got it") } }
+                    )
+                }
             }
         }
     }
