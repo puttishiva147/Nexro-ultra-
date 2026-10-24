@@ -5,13 +5,14 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.drawable.Icon
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
+import android.service.quicksettings.TileService
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -41,6 +42,29 @@ class MainActivity : ComponentActivity() {
             notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
         setContent { NexroApp(this) }
+    }
+
+    fun requestPostNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= 33) {
+            notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } else {
+            startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                .putExtra(Settings.EXTRA_APP_PACKAGE, packageName))
+        }
+    }
+
+    fun requestQuickSettingsTile() {
+        if (Build.VERSION.SDK_INT >= 33) {
+            TileService.requestAddTileService(
+                this,
+                ComponentName(this, NexroQuickSettingsTile::class.java),
+                "Nexro Ultra",
+                Icon.createWithResource(this, android.R.drawable.ic_lock_lock),
+                mainExecutor
+            ) { }
+        } else {
+            startActivity(Intent(Settings.ACTION_SETTINGS))
+        }
     }
 }
 
@@ -122,7 +146,7 @@ private fun NexroApp(activity: MainActivity) {
                             })
                         }
                         HorizontalDivider(color = androidx.compose.ui.graphics.Color(0xFF303632))
-                        Text("When enabled, supported notifications with detectable message text are replaced by a safe Nexro notice. Android does not allow a reliable text-only mask on every app layout.")
+                        Text("Selected message notifications are replaced by a safe Nexro notice. Android does not allow a reliable text-only mask on every app layout.")
                     }
                 }
 
@@ -130,17 +154,12 @@ private fun NexroApp(activity: MainActivity) {
                 Surface(shape = RoundedCornerShape(20.dp), color = NexroCard, modifier = Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                         PermissionRow("Notification access", listenerEnabled,
-                            "Lets Nexro detect selected app notifications") {
+                            "Detects selected app notifications") {
                             activity.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
                         }
                         PermissionRow("Nexro notifications", postPermission,
                             "Needed to show safe replacement notices") {
-                            if (Build.VERSION.SDK_INT >= 33) {
-                                activity.requestPostNotificationPermission()
-                            } else {
-                                activity.startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
-                                    .putExtra(Settings.EXTRA_APP_PACKAGE, activity.packageName))
-                            }
+                            activity.requestPostNotificationPermission()
                         }
                         OutlinedButton(onClick = { refresh++ }, modifier = Modifier.fillMaxWidth()) {
                             Text("Refresh permission status")
@@ -165,30 +184,22 @@ private fun NexroApp(activity: MainActivity) {
                 Surface(shape = RoundedCornerShape(20.dp), color = NexroCard, modifier = Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Text("Quick Settings tile", style = MaterialTheme.typography.titleMedium)
-                        Text("Add Nexro Ultra to Android Quick Settings to switch protection on or off without opening the app.")
-                        OutlinedButton(onClick = {
-                            if (Build.VERSION.SDK_INT >= 24) {
-                                activity.startActivity(Intent(Settings.ACTION_SETTINGS))
-                            }
-                        }, modifier = Modifier.fillMaxWidth()) { Text("Open Android Settings") }
-                        Text("Double-tap and volume-button triggers are not advertised as working because Android does not provide a reliable universal API for them.", color = MaterialTheme.colorScheme.secondary, style = MaterialTheme.typography.bodySmall)
+                        Text("Add a Nexro Ultra tile to Android Quick Settings to switch protection on or off without opening the app.")
+                        Button(onClick = { activity.requestQuickSettingsTile() }, modifier = Modifier.fillMaxWidth()) {
+                            Text("Add Quick Settings tile")
+                        }
+                        Text("Double-tap and volume-button triggers are not advertised as working because Android has no reliable universal API for them.", color = MaterialTheme.colorScheme.secondary, style = MaterialTheme.typography.bodySmall)
                     }
                 }
 
                 SectionTitle("PRIVACY NOTES")
-                Text("• Message text is processed locally and is not uploaded by Nexro Ultra.\n• The original notification may be dismissed, which can remove reply buttons and other actions.\n• Notifications that cannot be confidently identified are left untouched.\n• OEM behaviour and notification styles vary; verify on your own device before relying on this for sensitive messages.",
+                Text("• Notification processing stays on-device; message text is not uploaded or logged.\n• The original notification may be dismissed, removing reply buttons and other actions.\n• Notifications that cannot be confidently identified are left untouched.\n• OEM behaviour and notification styles vary; test on your device before relying on this for sensitive messages.",
                     color = MaterialTheme.colorScheme.secondary, style = MaterialTheme.typography.bodyMedium)
                 Spacer(Modifier.height(12.dp))
                 Text("NEXRO ULTRA  •  0.2.0", color = MaterialTheme.colorScheme.secondary,
                     style = MaterialTheme.typography.labelSmall)
             }
         }
-    }
-}
-
-private fun MainActivity.requestPostNotificationPermission() {
-    if (Build.VERSION.SDK_INT >= 33) {
-        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
     }
 }
 
