@@ -48,7 +48,7 @@ class MainActivity : ComponentActivity() {
 private fun NexroDashboard(activity: MainActivity) {
     val prefs = remember { activity.getSharedPreferences("nexro_ultra_prefs", Context.MODE_PRIVATE) }
     var enabled by remember { mutableStateOf(prefs.getBoolean("enabled", false)) }
-    var trigger by remember { mutableStateOf(prefs.getString("trigger", "volume_down") ?: "volume_down") }
+    var trigger by remember { mutableStateOf(prefs.getString("trigger", "quick_settings") ?: "quick_settings") }
     var previewHidden by remember { mutableStateOf(false) }
     val refresh = activity.resumeCount
     val observedRecords by NotificationEventRepository.get(activity).records.collectAsState()
@@ -66,7 +66,7 @@ private fun NexroDashboard(activity: MainActivity) {
 
     LaunchedEffect(refresh) {
         enabled = prefs.getBoolean("enabled", false)
-        trigger = prefs.getString("trigger", "volume_down") ?: "volume_down"
+        trigger = prefs.getString("trigger", "quick_settings") ?: "quick_settings"
     }
 
     MaterialTheme(colorScheme = darkColorScheme(
@@ -112,7 +112,7 @@ private fun NexroDashboard(activity: MainActivity) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Column(Modifier.weight(1f)) {
                                 Text("Enable privacy trigger", fontWeight = FontWeight.SemiBold)
-                                Text("Double-press your selected volume key while the notification shade is open.", color = Muted, style = MaterialTheme.typography.bodySmall)
+                                Text("Quick Settings tile is the supported tap trigger. Volume-key double-press is experimental and device-dependent.", color = Muted, style = MaterialTheme.typography.bodySmall)
                             }
                             Switch(checked = enabled, onCheckedChange = {
                                 enabled = it
@@ -127,12 +127,17 @@ private fun NexroDashboard(activity: MainActivity) {
                 Surface(shape = RoundedCornerShape(22.dp), color = Panel, modifier = Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Text("Pick the button you want to double-press. No app-by-app selection.", color = Muted, style = MaterialTheme.typography.bodySmall)
-                        TriggerOption("Volume Down × 2", "Double-press the volume-down key", trigger == "volume_down") {
+                        TriggerOption("Quick Settings tile", "Tap the Nexro tile in Android Quick Settings", trigger == "quick_settings") {
+                            trigger = "quick_settings"
+                            prefs.edit().putString("trigger", trigger).apply()
+                        }
+                        HorizontalDivider(color = Line)
+                        TriggerOption("Volume Down × 2 (experimental)", "Android may not deliver global volume keys to accessibility services", trigger == "volume_down") {
                             trigger = "volume_down"
                             prefs.edit().putString("trigger", trigger).apply()
                         }
                         HorizontalDivider(color = Line)
-                        TriggerOption("Volume Up × 2", "Double-press the volume-up key", trigger == "volume_up") {
+                        TriggerOption("Volume Up × 2 (experimental)", "Device-dependent; not a guaranteed system shortcut", trigger == "volume_up") {
                             trigger = "volume_up"
                             prefs.edit().putString("trigger", trigger).apply()
                         }
@@ -203,7 +208,7 @@ private fun NexroDashboard(activity: MainActivity) {
                                 Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                                     Text(item.title?.takeIf { it.isNotBlank() } ?: item.packageName, fontWeight = FontWeight.SemiBold)
                                     Text(item.text.orEmpty().take(140), color = Muted, style = MaterialTheme.typography.bodySmall)
-                                    Text("Visibility: UNKNOWN • Mask: UNSUPPORTED without SystemUI bounds", color = Muted, style = MaterialTheme.typography.labelSmall)
+                                    Text("State: ${item.phase} • Heads-up visibility: ${item.popupVisibility} • Exact mask: unsupported", color = Muted, style = MaterialTheme.typography.labelSmall)
                                 }
                             }
                         }
