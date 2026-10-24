@@ -1,25 +1,25 @@
-# Nexro Ultra — Android starter
+# Nexro Ultra — Android
 
-**Nexro Ultra is an independent project and brand. It is not part of VEIL.**
+Nexro Ultra is an independent project and brand. It is not part of VEIL.
 
-A standalone Android application scaffold for on-device notification privacy.
-
-## Included
-- Dedicated settings screen and independent ON/OFF preference.
-- Per-app selection for WhatsApp, Telegram, and Instagram.
+## Current implementation (0.2.0)
+- Dedicated dark Jetpack Compose UI with independent ON/OFF control.
+- Per-app switches for WhatsApp, WhatsApp Business, Telegram, and Instagram.
 - Notification access and Android 13+ notification permission status.
-- A NotificationListenerService that detects selected-app notifications with text extras, dismisses the original notification, and posts a safe replacement notice.
-- This implementation does not log, store, or upload notification message text.
+- Android Quick Settings tile for toggling the protection preference.
+- On-device notification listener that replaces selected message notifications with safe notices and does not copy message bodies into replacement notifications.
+- GitHub Actions workflow to build a debug APK and publish it as a workflow artifact.
 
-## Important Android limitation
-Ordinary third-party Android apps cannot reliably edit message text inside another app's posted notification or precisely paint a black mask over its private layout. This starter uses a fallback: cancel the original and post a Nexro Ultra replacement. This can remove original actions, reply controls, grouping, or other behavior. It may not cover every notification style and must be tested on target devices.
+## Important limitations
+Android does not provide ordinary third-party apps with a universal API to rewrite another app's notification text or precisely overlay a black mask on every notification layout. This implementation uses a fallback: cancel the source notification and post a safe replacement. That can remove reply actions, buttons, grouping, or other original behavior. Some notifications may not expose text in standard extras and will be left untouched.
 
-## Activation triggers
-The UI stores separate double-tap and volume-button settings, but global detection is not implemented in this starter. Ordinary apps do not have a universal system-wide double-tap or volume-key interception API.
+The Quick Settings tile toggles the preference; Android notification access must still be granted separately. Double-tap and global volume-button triggers are not implemented because there is no reliable general API for them on ordinary apps. The UI does not claim they work.
 
-## Build
-Open this project in Android Studio, use JDK 17 and Android SDK 35, and allow Gradle to sync dependencies. Build the app debug variant. No Android/Gradle build has been run in this environment, so build success is not claimed.
+## Privacy
+The listener processes notifications locally. It does not upload message text or write it to logs. The sender/title may be included in the replacement title; message body is not copied.
 
-## Package and version
-- Application ID: com.nexro.ultra
-- Version: 0.1.0 (versionCode 1)
+## Build APK
+A push to `main` affecting Kotlin, Gradle, XML, or the workflow triggers GitHub Actions. You can also open **Actions → Build Nexro Ultra APK → Run workflow**. After a successful run, download the `nexro-ultra-debug-apk` artifact from the run summary. It is a debug-signed APK, not a production release signature.
+
+## Build locally
+Use Android Studio, JDK 17, Android SDK 35, and Gradle 8.9; run `gradle assembleDebug`. No successful build is claimed until the workflow completes successfully.
