@@ -11,19 +11,28 @@ import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+
+private val NexroDark = androidx.compose.ui.graphics.Color(0xFF0B0D0C)
+private val NexroCard = androidx.compose.ui.graphics.Color(0xFF171A18)
+private val NexroAccent = androidx.compose.ui.graphics.Color(0xFF9AD9B5)
 
 class MainActivity : ComponentActivity() {
     private val notificationPermission = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         if (Build.VERSION.SDK_INT >= 33 &&
@@ -31,90 +40,187 @@ class MainActivity : ComponentActivity() {
                 != PackageManager.PERMISSION_GRANTED) {
             notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
-        setContent { NexroSettingsScreen(this) }
+        setContent { NexroApp(this) }
     }
 }
 
 @Composable
-private fun NexroSettingsScreen(activity: MainActivity) {
+private fun NexroApp(activity: MainActivity) {
     val prefs = remember { activity.getSharedPreferences("nexro_ultra_prefs", Context.MODE_PRIVATE) }
     var enabled by remember { mutableStateOf(prefs.getBoolean("enabled", false)) }
     var whatsapp by remember { mutableStateOf(prefs.getBoolean("pkg_whatsapp", true)) }
+    var whatsappBusiness by remember { mutableStateOf(prefs.getBoolean("pkg_whatsapp_business", false)) }
     var telegram by remember { mutableStateOf(prefs.getBoolean("pkg_telegram", false)) }
     var instagram by remember { mutableStateOf(prefs.getBoolean("pkg_instagram", false)) }
-    var doubleTap by remember { mutableStateOf(prefs.getBoolean("trigger_double_tap", false)) }
-    var volumePress by remember { mutableStateOf(prefs.getBoolean("trigger_volume", false)) }
-    var statusRefresh by remember { mutableIntStateOf(0) }
+    var refresh by remember { mutableIntStateOf(0) }
 
-    val listenerEnabled = remember(statusRefresh) {
+    val listenerEnabled = remember(refresh) {
         val expected = ComponentName(activity, NexroNotificationListener::class.java)
-        val listeners = Settings.Secure.getString(activity.contentResolver,
-            "enabled_notification_listeners").orEmpty()
-        listeners.split(':').any { ComponentName.unflattenFromString(it) == expected }
+        Settings.Secure.getString(activity.contentResolver, "enabled_notification_listeners")
+            .orEmpty().split(':').any { ComponentName.unflattenFromString(it) == expected }
     }
     val postPermission = Build.VERSION.SDK_INT < 33 ||
         ContextCompat.checkSelfPermission(activity, Manifest.permission.POST_NOTIFICATIONS) ==
         PackageManager.PERMISSION_GRANTED
+    val selectedAny = whatsapp || whatsappBusiness || telegram || instagram
+    val ready = listenerEnabled && postPermission && selectedAny
+    val status = when {
+        !enabled -> "Protection is off"
+        !listenerEnabled -> "Action needed: enable notification access"
+        !postPermission -> "Action needed: allow Nexro Ultra notifications"
+        !selectedAny -> "Choose at least one supported app"
+        else -> "Protection is enabled"
+    }
 
     fun save(key: String, value: Boolean) {
         prefs.edit().putBoolean(key, value).apply()
-        NexroNotificationListener.refreshEnabledState(activity)
+        NexroQuickSettingsTile.refresh(activity)
     }
 
-    MaterialTheme {
-        Scaffold { padding ->
-            Column(Modifier.padding(padding).fillMaxSize()
-                .verticalScroll(rememberScrollState()).padding(22.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                Text("NEXRO ULTRA", style = MaterialTheme.typography.headlineMedium)
-                Text("On-device notification privacy", style = MaterialTheme.typography.titleMedium)
-                Text("Nexro Ultra can replace selected apps' incoming notifications with a safe notice. Android does not let ordinary apps precisely paint over another app's notification text.")
-                HorizontalDivider()
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+    MaterialTheme(
+        colorScheme = darkColorScheme(
+            primary = NexroAccent,
+            onPrimary = NexroDark,
+            background = NexroDark,
+            surface = NexroCard,
+            onSurface = androidx.compose.ui.graphics.Color(0xFFF4F6F4),
+            secondary = androidx.compose.ui.graphics.Color(0xFFA5ADA7)
+        )
+    ) {
+        Scaffold(containerColor = NexroDark) { padding ->
+            Column(
+                Modifier.padding(padding).fillMaxSize().verticalScroll(rememberScrollState())
+                    .padding(horizontal = 20.dp, vertical = 18.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
-                        Text("Nexro Ultra", style = MaterialTheme.typography.titleLarge)
-                        Text(if (enabled && listenerEnabled && postPermission) "Enabled and ready" else if (!enabled) "Off" else "Setup required")
+                        Text("NEXRO", style = MaterialTheme.typography.labelLarge,
+                            color = NexroAccent, fontWeight = FontWeight.Bold)
+                        Text("ULTRA", style = MaterialTheme.typography.headlineLarge,
+                            fontWeight = FontWeight.ExtraBold)
+                        Text("Private by design.", color = MaterialTheme.colorScheme.secondary)
                     }
-                    Switch(checked = enabled, onCheckedChange = { enabled = it; save("enabled", it) })
+                    Surface(shape = RoundedCornerShape(18.dp), color = NexroCard) {
+                        Text("NU", modifier = Modifier.padding(18.dp),
+                            style = MaterialTheme.typography.titleLarge, color = NexroAccent,
+                            fontWeight = FontWeight.Bold)
+                    }
                 }
-                Text("Setup status", style = MaterialTheme.typography.titleMedium)
-                StatusLine("Notification access", listenerEnabled)
-                StatusLine("Post-notification permission", postPermission)
-                Button(onClick = { activity.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) },
-                    modifier = Modifier.fillMaxWidth()) { Text("Set up notification access") }
-                Text("Required to detect and dismiss selected notifications. Nexro Ultra does not upload notification content.")
-                HorizontalDivider()
-                Text("Supported apps", style = MaterialTheme.typography.titleMedium)
-                SettingSwitch("WhatsApp", whatsapp) { whatsapp = it; save("pkg_whatsapp", it) }
-                SettingSwitch("Telegram", telegram) { telegram = it; save("pkg_telegram", it) }
-                SettingSwitch("Instagram", instagram) { instagram = it; save("pkg_instagram", it) }
-                HorizontalDivider()
-                Text("Activation methods", style = MaterialTheme.typography.titleMedium)
-                SettingSwitch("Double-tap trigger", doubleTap) { doubleTap = it; save("trigger_double_tap", it) }
-                Text("System-wide double-tap is not implemented: Android does not provide a general global double-tap event to ordinary apps.")
-                SettingSwitch("Double-press volume button", volumePress) { volumePress = it; save("trigger_volume", it) }
-                Text("Global volume-button interception is not implemented because Android/device firmware restricts it and it can interfere with normal volume controls.")
-                Text("Current implementation", style = MaterialTheme.typography.titleMedium)
-                Text("When enabled with notification access, selected app notifications containing message text are dismissed and replaced with a Nexro Ultra notice. Original notification actions/replies may be lost. Notifications that cannot be safely identified are left untouched.")
-                Text("Early implementation scaffold — not a verified release build. Test on a spare device before relying on it for privacy.")
-                OutlinedButton(onClick = { statusRefresh++ }, modifier = Modifier.fillMaxWidth()) { Text("Refresh permission status") }
+
+                Surface(shape = RoundedCornerShape(24.dp), color = NexroCard,
+                    modifier = Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                Text("Notification privacy", style = MaterialTheme.typography.titleLarge)
+                                Text(status, color = if (enabled && ready) NexroAccent else MaterialTheme.colorScheme.secondary)
+                            }
+                            Switch(checked = enabled, onCheckedChange = {
+                                enabled = it
+                                save("enabled", it)
+                            })
+                        }
+                        HorizontalDivider(color = androidx.compose.ui.graphics.Color(0xFF303632))
+                        Text("When enabled, supported notifications with detectable message text are replaced by a safe Nexro notice. Android does not allow a reliable text-only mask on every app layout.")
+                    }
+                }
+
+                SectionTitle("SETUP")
+                Surface(shape = RoundedCornerShape(20.dp), color = NexroCard, modifier = Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                        PermissionRow("Notification access", listenerEnabled,
+                            "Lets Nexro detect selected app notifications") {
+                            activity.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+                        }
+                        PermissionRow("Nexro notifications", postPermission,
+                            "Needed to show safe replacement notices") {
+                            if (Build.VERSION.SDK_INT >= 33) {
+                                activity.requestPostNotificationPermission()
+                            } else {
+                                activity.startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                                    .putExtra(Settings.EXTRA_APP_PACKAGE, activity.packageName))
+                            }
+                        }
+                        OutlinedButton(onClick = { refresh++ }, modifier = Modifier.fillMaxWidth()) {
+                            Text("Refresh permission status")
+                        }
+                    }
+                }
+
+                SectionTitle("PROTECTED APPS")
+                Surface(shape = RoundedCornerShape(20.dp), color = NexroCard, modifier = Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(horizontal = 16.dp)) {
+                        AppToggle("WhatsApp", "com.whatsapp", whatsapp) { whatsapp = it; save("pkg_whatsapp", it) }
+                        HorizontalDivider(color = androidx.compose.ui.graphics.Color(0xFF303632))
+                        AppToggle("WhatsApp Business", "com.whatsapp.w4b", whatsappBusiness) { whatsappBusiness = it; save("pkg_whatsapp_business", it) }
+                        HorizontalDivider(color = androidx.compose.ui.graphics.Color(0xFF303632))
+                        AppToggle("Telegram", "org.telegram.messenger", telegram) { telegram = it; save("pkg_telegram", it) }
+                        HorizontalDivider(color = androidx.compose.ui.graphics.Color(0xFF303632))
+                        AppToggle("Instagram", "com.instagram.android", instagram) { instagram = it; save("pkg_instagram", it) }
+                    }
+                }
+
+                SectionTitle("QUICK ACTIVATION")
+                Surface(shape = RoundedCornerShape(20.dp), color = NexroCard, modifier = Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text("Quick Settings tile", style = MaterialTheme.typography.titleMedium)
+                        Text("Add Nexro Ultra to Android Quick Settings to switch protection on or off without opening the app.")
+                        OutlinedButton(onClick = {
+                            if (Build.VERSION.SDK_INT >= 24) {
+                                activity.startActivity(Intent(Settings.ACTION_SETTINGS))
+                            }
+                        }, modifier = Modifier.fillMaxWidth()) { Text("Open Android Settings") }
+                        Text("Double-tap and volume-button triggers are not advertised as working because Android does not provide a reliable universal API for them.", color = MaterialTheme.colorScheme.secondary, style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+
+                SectionTitle("PRIVACY NOTES")
+                Text("• Message text is processed locally and is not uploaded by Nexro Ultra.\n• The original notification may be dismissed, which can remove reply buttons and other actions.\n• Notifications that cannot be confidently identified are left untouched.\n• OEM behaviour and notification styles vary; verify on your own device before relying on this for sensitive messages.",
+                    color = MaterialTheme.colorScheme.secondary, style = MaterialTheme.typography.bodyMedium)
+                Spacer(Modifier.height(12.dp))
+                Text("NEXRO ULTRA  •  0.2.0", color = MaterialTheme.colorScheme.secondary,
+                    style = MaterialTheme.typography.labelSmall)
             }
         }
     }
 }
 
-@Composable
-private fun StatusLine(label: String, ok: Boolean) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(label)
-        Text(if (ok) "Granted" else "Missing")
+private fun MainActivity.requestPostNotificationPermission() {
+    if (Build.VERSION.SDK_INT >= 33) {
+        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
     }
 }
 
 @Composable
-private fun SettingSwitch(label: String, checked: Boolean, onChange: (Boolean) -> Unit) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(label, modifier = Modifier.weight(1f))
+private fun SectionTitle(text: String) {
+    Text(text, style = MaterialTheme.typography.labelMedium, color = NexroAccent,
+        fontWeight = FontWeight.Bold)
+}
+
+@Composable
+private fun PermissionRow(title: String, granted: Boolean, explanation: String, onClick: () -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(title, fontWeight = FontWeight.SemiBold)
+                Text(explanation, color = MaterialTheme.colorScheme.secondary, style = MaterialTheme.typography.bodySmall)
+            }
+            Text(if (granted) "READY" else "SET UP",
+                color = if (granted) NexroAccent else MaterialTheme.colorScheme.secondary,
+                style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+        }
+        if (!granted) TextButton(onClick = onClick) { Text("Open settings") }
+    }
+}
+
+@Composable
+private fun AppToggle(title: String, packageName: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            Text(title, fontWeight = FontWeight.Medium)
+            Text(packageName, color = MaterialTheme.colorScheme.secondary, style = MaterialTheme.typography.labelSmall)
+        }
         Switch(checked = checked, onCheckedChange = onChange)
     }
 }
