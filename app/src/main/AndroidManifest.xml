@@ -3,6 +3,7 @@
     <application
         android:allowBackup="false"
         android:label="Nexro Ultra"
+        android:icon="@drawable/ic_nexro_logo"
         android:theme="@android:style/Theme.Material.Light.NoActionBar"
         android:supportsRtl="true">
         <activity android:name=".MainActivity" android:exported="true">
@@ -23,7 +24,7 @@
         <service
             android:name=".NexroQuickSettingsTile"
             android:label="Nexro Ultra"
-            android:icon="@android:drawable/ic_lock_lock"
+            android:icon="@drawable/ic_nexro_logo"
             android:permission="android.permission.BIND_QUICK_SETTINGS_TILE"
             android:exported="true">
             <intent-filter>
