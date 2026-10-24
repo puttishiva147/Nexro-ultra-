@@ -1,11 +1,4 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <queries>
-        <package android:name="com.whatsapp" />
-        <package android:name="com.whatsapp.w4b" />
-        <package android:name="org.telegram.messenger" />
-        <package android:name="com.instagram.android" />
-    </queries>
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <application
         android:allowBackup="false"
         android:label="Nexro Ultra"
@@ -19,13 +12,16 @@
             </intent-filter>
         </activity>
         <service
-            android:name=".NexroNotificationListener"
-            android:label="Nexro Ultra Notification Privacy"
-            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
+            android:name=".NexroPrivacyAccessibilityService"
+            android:label="Nexro Ultra Privacy Trigger"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
             android:exported="true">
             <intent-filter>
-                <action android:name="android.service.notification.NotificationListenerService" />
+                <action android:name="android.accessibilityservice.AccessibilityService" />
             </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/nexro_accessibility_service" />
         </service>
         <service
             android:name=".NexroQuickSettingsTile"
