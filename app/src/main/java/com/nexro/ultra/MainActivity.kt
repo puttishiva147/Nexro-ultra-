@@ -54,6 +54,8 @@ private fun NexroDashboard(activity: MainActivity) {
     var enabled by remember { mutableStateOf(prefs.getBoolean("enabled", false)) }
     var trigger by remember { mutableStateOf(prefs.getString("trigger", "quick_settings") ?: "quick_settings") }
     var previewHidden by remember { mutableStateOf(false) }
+    var previewUpdated by remember { mutableStateOf(false) }
+    var previewCount by remember { mutableIntStateOf(1) }
     var revealObservedContent by remember { mutableStateOf(false) }
     val refresh = activity.resumeCount
     val observedRecords by NotificationEventRepository.get(activity).records.collectAsState()
@@ -156,33 +158,49 @@ private fun NexroDashboard(activity: MainActivity) {
                 SectionHeading("02", "TEST PREVIEW")
                 Surface(shape = RoundedCornerShape(22.dp), color = Panel, modifier = Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text("Example notification", color = Muted, style = MaterialTheme.typography.labelMedium)
-                        if (!previewHidden) {
-                            Surface(shape = RoundedCornerShape(16.dp), color = Raised, modifier = Modifier.fillMaxWidth()) {
-                                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                                    Text("WhatsApp  •  now", color = Muted, style = MaterialTheme.typography.labelSmall)
-                                    Text("Aarav", fontWeight = FontWeight.Bold)
-                                    Text("Hey, are we still meeting today?", style = MaterialTheme.typography.bodyMedium)
+                        Text("Simulated heads-up notifications", color = Muted, style = MaterialTheme.typography.labelMedium)
+                        repeat(previewCount) { previewIndex ->
+                            if (!previewHidden) {
+                                Surface(shape = RoundedCornerShape(16.dp), color = Raised, modifier = Modifier.fillMaxWidth()) {
+                                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                                        Text(if (previewIndex == 0) "Messages • now" else "Mail • now", color = Muted, style = MaterialTheme.typography.labelSmall)
+                                        Text(if (previewIndex == 0) "Aarav" else "Priya", fontWeight = FontWeight.Bold)
+                                        Text(
+                                            when {
+                                                previewIndex == 0 && previewUpdated -> "Updated message: running 10 minutes late."
+                                                previewIndex == 0 -> "Hey, are we still meeting today?"
+                                                previewUpdated -> "Updated: your appointment was changed."
+                                                else -> "Your appointment reminder is here."
+                                            },
+                                            style = MaterialTheme.typography.bodyMedium
+                                        )
+                                    }
                                 }
-                            }
-                        } else {
-                            Surface(shape = RoundedCornerShape(16.dp), color = Color.Black, modifier = Modifier.fillMaxWidth()) {
-                                Row(Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                    Surface(shape = CircleShape, color = Raised, modifier = Modifier.size(34.dp)) {
-                                        Box(contentAlignment = Alignment.Center) { Text("N", color = Mint, fontWeight = FontWeight.Bold) }
+                            } else {
+                                Surface(shape = RoundedCornerShape(16.dp), color = Color.Black, modifier = Modifier.fillMaxWidth()) {
+                                    Row(Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                        Surface(shape = CircleShape, color = Raised, modifier = Modifier.size(34.dp)) {
+                                            Box(contentAlignment = Alignment.Center) { Text("N", color = Mint, fontWeight = FontWeight.Bold) }
+                                        }
+                                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                                            Text("NOTIFICATION HIDDEN", color = Color.White, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
+                                            Text("Simulated content is covered", color = Muted, style = MaterialTheme.typography.bodySmall)
+                                        }
+                                        Text("•••", color = Color.White)
                                     }
-                                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                                        Text("NOTIFICATION HIDDEN", color = Color.White, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
-                                        Text("Message content is covered", color = Muted, style = MaterialTheme.typography.bodySmall)
-                                    }
-                                    Text("•••", color = Color.White)
                                 }
                             }
                         }
                         Button(onClick = { previewHidden = !previewHidden }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp)) {
-                            Text(if (previewHidden) "Show normal notification" else "Test black hide bar")
+                            Text(if (previewHidden) "Reveal simulated notifications" else "Mask simulated notifications")
                         }
-                        Text("This is a visual demo only. It does not alter a real notification.", color = Muted, style = MaterialTheme.typography.bodySmall)
+                        OutlinedButton(onClick = { previewUpdated = !previewUpdated }, modifier = Modifier.fillMaxWidth()) {
+                            Text(if (previewUpdated) "Restore original simulated text" else "Simulate notification update")
+                        }
+                        OutlinedButton(onClick = { previewCount = if (previewCount >= 3) 1 else previewCount + 1 }, modifier = Modifier.fillMaxWidth()) {
+                            Text("Simulate multiple notifications ($previewCount)")
+                        }
+                        Text("Preview only: it does not prove or perform masking of genuine SystemUI heads-up notifications.", color = Muted, style = MaterialTheme.typography.bodySmall)
                     }
                 }
 
