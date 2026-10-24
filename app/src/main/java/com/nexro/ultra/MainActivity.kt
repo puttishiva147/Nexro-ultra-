@@ -54,6 +54,7 @@ private fun NexroDashboard(activity: MainActivity) {
     var enabled by remember { mutableStateOf(prefs.getBoolean("enabled", false)) }
     var trigger by remember { mutableStateOf(prefs.getString("trigger", "quick_settings") ?: "quick_settings") }
     var previewHidden by remember { mutableStateOf(false) }
+    var revealObservedContent by remember { mutableStateOf(false) }
     val refresh = activity.resumeCount
     val observedRecords by NotificationEventRepository.get(activity).records.collectAsState()
     val accessibilityEnabled = remember(refresh) {
@@ -215,9 +216,21 @@ private fun NexroDashboard(activity: MainActivity) {
                                 HorizontalDivider(color = Line)
                                 Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                                     Text(item.title?.takeIf { it.isNotBlank() } ?: item.packageName, fontWeight = FontWeight.SemiBold)
-                                    Text(item.text.orEmpty().take(140), color = Muted, style = MaterialTheme.typography.bodySmall)
+                                    Text(if (revealObservedContent) item.text.orEmpty().take(140) else "Content hidden inside Nexro viewer", color = Muted, style = MaterialTheme.typography.bodySmall)
                                     Text("State: ${item.phase} • Heads-up visibility: ${item.popupVisibility} • Exact mask: unsupported", color = Muted, style = MaterialTheme.typography.labelSmall)
                                 }
+                            }
+                        }
+                        if (observedRecords.values.any { !it.removed }) {
+                            OutlinedButton(onClick = { revealObservedContent = !revealObservedContent }, modifier = Modifier.fillMaxWidth()) {
+                                Text(if (revealObservedContent) "Hide content in Nexro viewer" else "Reveal content in Nexro viewer")
+                            }
+                            OutlinedButton(onClick = {
+                                observedRecords.values.lastOrNull { !it.removed }?.let {
+                                    NotificationEventRepository.get(activity).requestMask(it.key)
+                                }
+                            }, modifier = Modifier.fillMaxWidth()) {
+                                Text("Request exact mask (capability check)")
                             }
                         }
                     }
