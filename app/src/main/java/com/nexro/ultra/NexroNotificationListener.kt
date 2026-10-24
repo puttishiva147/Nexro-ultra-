@@ -42,8 +42,8 @@ class NexroNotificationListener : NotificationListenerService() {
         if (!hasMessageText) return
 
         try {
-            cancelNotification(sbn.key)
             postSafeReplacement(sbn.packageName, title?.toString().orEmpty(), sbn.id)
+            cancelNotification(sbn.key)
         } catch (_: SecurityException) {
             // Permission may have been revoked during processing.
         } catch (_: Exception) {
