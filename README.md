@@ -23,3 +23,14 @@ A push to `main` affecting Kotlin, Gradle, XML, or the workflow triggers GitHub 
 
 ## Build locally
 Use Android Studio, JDK 17, Android SDK 35, and Gradle 8.9; run `gradle assembleDebug`. No successful build is claimed until the workflow completes successfully.
+
+---
+
+## Ownership and credits
+
+- **Project owner / creator:** Shiva Putti
+- **GitHub:** [@puttishiva147](https://github.com/puttishiva147)
+- **Repository:** [puttishiva147/Nexro-ultra-](https://github.com/puttishiva147/Nexro-ultra-)
+- **Documentation reviewed:** 15 November 2026
+
+Repository creation time and latest source update are maintained by GitHub repository metadata and commit history. The documentation review date above is not a substitute for either timestamp. Third-party libraries, APIs, trademarks and platform components retain their respective owners' rights and licence terms.
